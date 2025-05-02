@@ -1,14 +1,14 @@
 // File: src/App.jsx
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import React from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import Login from './pages/Login'
+import Dashboard from './pages/Dashboard'
+import { AuthProvider, useAuth } from './context/AuthContext'
 
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? children : <Navigate to="/login" />;
-};
+  const { isAuthenticated } = useAuth()
+  return isAuthenticated ? children : <Navigate to="/login" />
+}
 
 const App = () => (
   <AuthProvider>
@@ -27,6 +27,6 @@ const App = () => (
       </Routes>
     </Router>
   </AuthProvider>
-);
+)
 
-export default App;
+export default App

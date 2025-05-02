@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import axios from 'axios'
-import { DndContext, useSensor, useSensors, PointerSensor, closestCenter, TouchSensor, MouseSensor } from '@dnd-kit/core'
+import { DndContext, useSensor, useSensors, PointerSensor, closestCenter, TouchSensor } from '@dnd-kit/core'
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import SortableItem from '../components/SortableItem'
 import Loader from '../components/Loader'
@@ -13,9 +13,11 @@ const Dashboard = () => {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(false)
   const [isFormAddUpdateLoading, setIsFormAddUpdateLoading] = useState(false)
+  const [isDeleteLoading, setIsDeleteLoading] = useState(false)
   const [form, setForm] = useState({ title: '', description: '' })
   const [editingId, setEditingId] = useState(null)
   const [message, setMessage] = useState(null)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
 
   const formRef = useRef(null)
@@ -30,7 +32,8 @@ const Dashboard = () => {
     try {
       const res = await axios.get('https://dummyjson.com/products')
       setProducts(res.data.products)
-    } catch (err) {
+    } catch (error) {
+      console.log(error)
       setMessage({ type: 'error', text: 'Failed to fetch products.' })
     } finally {
       setLoading(false)
@@ -63,7 +66,8 @@ const Dashboard = () => {
       }
       setForm({ title: '', description: '' })
       setEditingId(null)
-    } catch (err) {
+    } catch (error) {
+      console.log(error)
       setMessage({ type: 'error', text: 'Operation failed.' })
     } finally {
       setIsFormAddUpdateLoading(false)
@@ -79,14 +83,16 @@ const Dashboard = () => {
   }, [])
 
   const handleDelete = useCallback(async (id) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      try {
-        await axios.delete(`https://dummyjson.com/products/${id}`)
-        setProducts(products.filter(p => p.id !== id))
-        setMessage({ type: 'success', text: 'Product deleted successfully.' })
-      } catch {
-        setMessage({ type: 'error', text: 'Failed to delete product.' })
-      }
+    setIsDeleteLoading(true)
+    try {
+      await axios.delete(`https://dummyjson.com/products/${id}`)
+      setProducts(products.filter(p => p.id !== id))
+      setMessage({ type: 'success', text: 'Product deleted successfully.' })
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to delete product.' })
+    } finally {
+      setEditingId(null)
+      setIsDeleteLoading(false)
     }
   }, [products])
 
@@ -101,9 +107,13 @@ const Dashboard = () => {
   }
 
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 0, tolerance: 5 } }),
-    useSensor(PointerSensor)
+    useSensor(PointerSensor),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 50,
+      },
+    })
   )
 
   return (
@@ -132,7 +142,7 @@ const Dashboard = () => {
 
         {message && <p className={`mb-4 ${message.type === 'error' ? 'text-red-500' : 'text-green-600'}`}>{message.text}</p>}
 
-        {loading ? (
+        {(loading || isDeleteLoading) ? (
           <Loader />
         ) : (<>
           <div className="flex w-full border-b-2 border-black-200 mb-4 pb-2">
@@ -153,22 +163,9 @@ const Dashboard = () => {
                       id={product.id}
                       product={product}
                       onEdit={handleEdit}
-                      onDelete={handleDelete}
+                      setShowDeleteModal={setShowDeleteModal}
+                      setEditingId={setEditingId}
                     />
-                    <div className="flex flex-col items-center sm:flex-row gap-4 ms-2">
-                      <button
-                        onClick={() => handleEdit(product)}
-                        className="text-amber-50 cursor-pointer bg-blue-700 p-2 px-4 rounded-lg z-auto"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(product.id)}
-                        className="text-amber-50 cursor-pointer bg-red-700 p-2 rounded-lg z-auto"
-                      >
-                        Delete
-                      </button>
-                    </div>
                   </div>
                 ))}
               </div>
@@ -197,6 +194,32 @@ const Dashboard = () => {
                   className="px-4 py-2 bg-red-600 text-white rounded"
                 >
                   Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-gray-50 bg-blend-screen flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
+              <h2 className="text-lg font-semibold mb-4">Delete Record</h2>
+              <p className="mb-6">Are you sure you want to delete?</p>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="px-4 py-2 bg-gray-300 rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false)
+                    handleDelete(editingId)
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded"
+                >
+                  Delete
                 </button>
               </div>
             </div>
